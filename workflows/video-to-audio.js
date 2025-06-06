@@ -394,14 +394,29 @@ function convertVideoToAudio(inputFile, outputFile, config, overwrite) {
         console.error("❌ Conversion failed:");
         console.error("Command: ffmpeg " + args.join(" "));
         console.error("Error:", result.error);
-        if (result.stderr) {
+        
+        // Show stderr if available
+        if (result.stderr && result.stderr.trim()) {
+            console.error("Standard Error Output:");
             var errorLines = result.stderr.split("\n");
-            for (var i = 0; i < errorLines.length && i < 5; i++) {
+            for (var i = 0; i < errorLines.length && i < 10; i++) {
                 if (errorLines[i].trim()) {
                     console.error("  " + errorLines[i].trim());
                 }
             }
         }
+        
+        // Show stdout if available (some tools output errors to stdout)
+        if (result.stdout && result.stdout.trim()) {
+            console.error("Standard Output:");
+            var outputLines = result.stdout.split("\n");
+            for (var i = 0; i < outputLines.length && i < 10; i++) {
+                if (outputLines[i].trim()) {
+                    console.error("  " + outputLines[i].trim());
+                }
+            }
+        }
+        
         return false;
     }
     

@@ -255,6 +255,28 @@ function checkCliTool(toolName) {
     
     console.error("❌ " + toolName + " command failed");
     console.error("Error:", result.error);
+    
+    // Show additional error details if available
+    if (result.stderr && result.stderr.trim()) {
+        console.error("Standard Error Output:");
+        var errorLines = result.stderr.split("\n");
+        for (var i = 0; i < errorLines.length && i < 5; i++) {
+            if (errorLines[i].trim()) {
+                console.error("  " + errorLines[i].trim());
+            }
+        }
+    }
+    
+    if (result.stdout && result.stdout.trim()) {
+        console.error("Standard Output:");
+        var outputLines = result.stdout.split("\n");
+        for (var i = 0; i < outputLines.length && i < 5; i++) {
+            if (outputLines[i].trim()) {
+                console.error("  " + outputLines[i].trim());
+            }
+        }
+    }
+    
     return false;
 }
 
@@ -377,14 +399,29 @@ function extractTextFromDocument(documentFile, textOutputFile, ocrTool, ocrLlmTe
         console.error("❌ Text extraction failed:");
         console.error("Command: doc-to-text " + extractArgs.join(" "));
         console.error("Error:", extractResult.error);
-        if (extractResult.stderr) {
+        
+        // Show stderr if available
+        if (extractResult.stderr && extractResult.stderr.trim()) {
+            console.error("Standard Error Output:");
             var errorLines = extractResult.stderr.split("\n");
-            for (var i = 0; i < errorLines.length && i < 5; i++) {
+            for (var i = 0; i < errorLines.length && i < 10; i++) {
                 if (errorLines[i].trim()) {
                     console.error("  " + errorLines[i].trim());
                 }
             }
         }
+        
+        // Show stdout if available (some tools output errors to stdout)
+        if (extractResult.stdout && extractResult.stdout.trim()) {
+            console.error("Standard Output:");
+            var outputLines = extractResult.stdout.split("\n");
+            for (var i = 0; i < outputLines.length && i < 10; i++) {
+                if (outputLines[i].trim()) {
+                    console.error("  " + outputLines[i].trim());
+                }
+            }
+        }
+        
         return false;
     }
     
