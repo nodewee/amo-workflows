@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "es5",
+    "allowJs": true,
+    "checkJs": false,
+    "declaration": false,
+    "noEmit": true,
+    "strict": false,
+    "typeRoots": ["./"],
+    "types": ["amo-workflow"]
+  },
+  "include": [
+    "*.js",
+    "**/*.js",
+    "amo-workflow.d.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

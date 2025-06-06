@@ -1,0 +1,65 @@
+# Project Related
+amo
+
+# Resource Files
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.tiff
+*.ico
+*.webp
+*.svg
+
+# Built & Output
+build/
+dist/
+coverage/
+src-tauri/target
+target
+dist-ssr
+*.local
+
+# Test
+test/
+test_*
+test-*
+examples/*.png
+
+# IDE
+.idea/
+.vscode/
+!.vscode/extensions.json
+*.sublime-*
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.cursor*
+
+# Dependency & Cache
+node_modules/
+.npm/
+package-lock.json
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pyw
+*.tsbuildinfo
+.cache/
+.temp/
+.tmp/
+.swp
+.swo
+.suo
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# OS Files
+.DS_Store
+Thumbs.db
