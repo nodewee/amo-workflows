@@ -45,6 +45,11 @@ declare namespace Amo {
     files?: string[];
   }
 
+  // Hash result types
+  interface HashResult extends Result {
+    hash?: string;
+  }
+
   // Network types
   interface HTTPResponse {
     status_code: number;
@@ -127,6 +132,9 @@ declare const fs: {
   getcwd(): Amo.PathResult; // alias
   chdir(path: string): Amo.Result;
   cd(path: string): Amo.Result; // alias
+  
+  // Hash functions
+  md5(path: string): Amo.HashResult;
 };
 
 // HTTP/Network API
