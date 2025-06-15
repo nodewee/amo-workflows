@@ -1,6 +1,6 @@
 //!amo
 
-// Receipt Processor Workflow - Extract and organize information from receipts
+// Receipt Extraction Workflow - Extract and organize information from receipts
 // Supports: single file, multiple files, or directory batch processing
 // Document types: images, PDFs, and other formats containing receipt information
 
@@ -12,7 +12,7 @@ function main() {
     var overwrite = getVar("overwrite") === "true";
     var verbose = getVar("verbose") === "true";
 
-    console.log("🧾➡️📊 Receipt Processor Workflow");
+    console.log("🧾➡️📊 Receipt Extraction Workflow");
     console.log("===============================");
     console.log("Input:", inputPath || "Not specified");
     console.log("Output:", outputPath || "Same as input");
