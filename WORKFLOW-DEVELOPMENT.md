@@ -1,6 +1,4 @@
 # Amo Workflow Development Environment Setup Guide
-> Version v20250605
-> Copied from https://github.com/amo-run/amo-cli/blob/main/WORKFLOW-DEVELOPMENT.md
 
 This guide will help you set up IDE auto-completion functionality to make Amo workflow development more efficient.
 
@@ -26,6 +24,7 @@ Amo Workflow is a powerful automation solution that allows you to create custom 
 - **Type Safety**: Complete IDE support through TypeScript definition files
 - **Security Model**: Whitelist-based security for commands and network access
 - **Cross-Platform**: Works consistently across Windows, macOS, and Linux
+- **Workflow Management**: Download and share workflows from remote sources (GitHub, GitLab, etc.)
 
 ## Development Environment Requirements and Limitations
 
@@ -49,7 +48,7 @@ When developing Amo workflows, please pay attention to the following restriction
 
 4. **Security Restrictions**
    - CLI commands are restricted to a whitelist (configured in `~/.amo/allowed_cli.txt`)
-   - Network requests are limited to allowed domains
+   - Network requests are limited to allowed domains (for downloads: GitHub, GitLab, Bitbucket, SourceForge)
    - File operations are validated for security (no path traversal)
 
 ### Available API Types
@@ -58,6 +57,7 @@ The Amo workflow engine provides the following core APIs:
 
 - **`fs`**: File system operations (read/write files, directory operations, path handling, etc.)
 - **`http`**: Network requests (GET, POST, file downloads, etc.)
+- **`encoding`**: Encoding/decoding operations (base64, etc.)
 - **`console`**: Console output (logging)
 - **`cliCommand`**: Command line execution (with security whitelist)
 - **`getVar`**: Get environment variables and runtime parameters
@@ -137,6 +137,9 @@ fs.| // <- All fs methods should be displayed when cursor is here
 
 // Typing "http." should show network-related methods
 http.| // <- Shows get, post, getJSON, downloadFile and other methods
+
+// Typing "encoding." should show encoding-related methods
+encoding.| // <- Shows base64Encode, base64Decode and other methods
 
 // Test path operations
 var testPath = "/home/user/file.txt";
@@ -264,13 +267,56 @@ if (downloadResponse.status_code === 200) {
 }
 ```
 
+### Encoding/Decoding Examples
+
+```javascript
+//!amo
+
+// Base64 encoding
+var originalText = "Hello, Amo Workflow!";
+var encoded = encoding.base64Encode(originalText);
+console.log("Base64 encoded:", encoded);  // SGVsbG8sIEFtbyBXb3JrZmxvdyE=
+
+// Base64 decoding with error handling
+var decodeResult = encoding.base64Decode(encoded);
+if (decodeResult.success) {
+    console.log("Decoded text:", decodeResult.text);  // Hello, Amo Workflow!
+} else {
+    console.error("Decode failed:", decodeResult.error);
+}
+
+// Working with binary data (e.g., image file)
+var imageResult = fs.read("./image.png", true);  // true for binary mode
+if (imageResult.success) {
+    // Convert binary image to base64 for embedding in HTML or JSON
+    var base64Image = encoding.base64Encode(imageResult.content);
+    console.log("Image as base64:", base64Image.substring(0, 50) + "...");
+    
+    // Save base64 data to a file
+    fs.write("./image.b64", base64Image);
+    
+    // Later, decode back to binary
+    var decoded = encoding.base64Decode(base64Image);
+    if (decoded.success) {
+        // Save decoded binary back to file
+        fs.write("./image_copy.png", decoded.text, true);  // true for binary mode
+    }
+}
+
+// Handle invalid base64 input
+var invalidResult = encoding.base64Decode("This is not valid base64!!!");
+if (!invalidResult.success) {
+    console.error("Invalid base64 detected:", invalidResult.error);
+}
+```
+
 ### Command Line Execution Examples
 
 ```javascript
 //!amo
 
 // Basic command execution
-var result = cliCommand("ls", ["-la"]);
+var result = cliCommand("echo", ["Hello World"]);
 if (result.stdout) {
     console.log("Command output:", result.stdout);
 }
@@ -302,7 +348,7 @@ var interactiveResult = cliCommand("nano", ["file.txt"], {
 
 function safeFileOperation(filePath) {
     try {
-        // Check if file exists first
+        // First check if file exists
         if (!fs.exists(filePath)) {
             console.error("File does not exist:", filePath);
             return null;
@@ -437,62 +483,54 @@ var pattern = getVar("pattern") || "*.txt";
 processDirectory(inputDir, pattern);
 ```
 
-### 4. Working with JSON Configuration
+## Command Usage Examples
 
-```javascript
-//!amo
+### Running Workflows
 
-function loadConfig(configPath) {
-    if (!fs.exists(configPath)) {
-        // Create default config
-        var defaultConfig = {
-            name: "My Workflow",
-            version: "1.0.0",
-            settings: {
-                debug: false,
-                timeout: 30
-            }
-        };
-        
-        var writeResult = fs.write(configPath, JSON.stringify(defaultConfig, null, 2));
-        if (!writeResult.success) {
-            console.error("Failed to create default config:", writeResult.error);
-            return null;
-        }
-        console.log("Created default config:", configPath);
-        return defaultConfig;
-    }
+```bash
+# Run embedded workflow
+amo run file-organizer.js --var source_dir=/Downloads --var target_dir=/Organized
 
-    var readResult = fs.read(configPath);
-    if (!readResult.success) {
-        console.error("Failed to read config:", readResult.error);
-        return null;
-    }
+# Run user-downloaded workflow  
+amo run my-custom-workflow.js --input /data --output /results
 
-    try {
-        return JSON.parse(readResult.content);
-    } catch (error) {
-        console.error("Invalid JSON in config file:", error.message);
-        return null;
-    }
-}
+# Run with debug information
+amo run workflow.js --debug
 
-function main() {
-    var config = loadConfig("./workflow-config.json");
-    if (!config) {
-        return false;
-    }
+# Run with timeout limit
+amo run long-workflow.js --timeout 3600
 
-    console.log("Loaded config:", config.name, "v" + config.version);
-    
-    if (config.settings.debug) {
-        console.log("Debug mode enabled");
-    }
+# Show workflow help (if supported)
+amo run workflow.js --workflow-help
+```
 
-    return true;
-}
+### Managing Workflows
 
-main();
+```bash
+# List all available workflows
+amo workflow list
+
+# Download workflow from GitHub
+amo workflow get https://github.com/user/repo/blob/main/workflow.js
+
+# Download with custom filename
+amo workflow get https://raw.githubusercontent.com/user/repo/main/workflow.js --filename my-workflow.js
+
+# Download from GitLab
+amo workflow get https://gitlab.com/user/repo/-/blob/main/workflow.js
+```
+
+### Managing CLI Permissions
+
+```bash
+# List allowed commands
+amo tool permission list
+
+# Add command to whitelist
+amo tool permission add ffmpeg
+
+# Remove command from whitelist  
+amo tool permission remove echo
 ```
 
 ## Troubleshooting
@@ -552,10 +590,12 @@ TypeScript definition files are mainly used to provide auto-completion. If type 
    // ❌ Error: Cannot use browser/Node.js APIs
    fetch('https://api.example.com');
    require('path').join('a', 'b');
+   btoa('encode this');  // Browser API
    
    // ✅ Correct: Use Amo workflow APIs
    http.get('https://api.example.com');
    fs.join(['a', 'b']);
+   encoding.base64Encode('encode this');
    ```
 
 4. **Path Handling Issues**
@@ -573,13 +613,13 @@ TypeScript definition files are mainly used to provide auto-completion. If type 
    ```
    Error: command 'xyz' is not in the allowed CLI commands list
    ```
-   Solution: Add the command to `~/.amo/allowed_cli.txt`
+   Solution: Add the command using `amo tool permission add xyz`
 
 2. **Network Request Blocked**
    ```
    Error: URL not in allowed hosts whitelist
    ```
-   Solution: Check network whitelist configuration
+   Solution: Network requests within workflows are allowed, but downloads are restricted to specific domains
 
 3. **Path Traversal Error**
    ```
@@ -587,9 +627,16 @@ TypeScript definition files are mainly used to provide auto-completion. If type 
    ```
    Solution: Use relative paths without `..` components
 
+4. **Workflow Download Failed**
+   ```
+   Error: download failed with status 404
+   ```
+   Solution: Ensure the URL is correct and from an allowed domain (GitHub, GitLab, Bitbucket, SourceForge)
+
 ### Performance Tips
 
 1. **Batch Operations**: Process multiple files in a single workflow rather than calling the workflow repeatedly
 2. **Error Early**: Check for required conditions early in your workflow
 3. **Resource Cleanup**: Clean up temporary files when done
 4. **Timeout Management**: Set appropriate timeouts for long-running commands
+5. **Caching**: Use the tool path cache system by ensuring tools are properly installed

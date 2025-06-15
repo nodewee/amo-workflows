@@ -50,6 +50,11 @@ declare namespace Amo {
     hash?: string;
   }
 
+  // Base64 result type
+  interface Base64Result extends Result {
+    text?: string;
+  }
+
   // Network types
   interface HTTPResponse {
     status_code: number;
@@ -128,10 +133,11 @@ declare const fs: {
   size(path: string): Amo.SizeResult;
   find(root: string, pattern: string): Amo.FindResult;
   search(root: string, pattern: string): Amo.FindResult; // alias
-  cwd(): Amo.PathResult;
-  getcwd(): Amo.PathResult; // alias
-  chdir(path: string): Amo.Result;
-  cd(path: string): Amo.Result; // alias
+  
+  // New path functions
+  getCurrentWorkingPath(): Amo.PathResult;
+  getTempFilePath(prefix?: string): Amo.PathResult;
+  generateUniqueFilename(path: string, maxAttempts?: number): Amo.PathResult;
   
   // Hash functions
   md5(path: string): Amo.HashResult;
@@ -143,6 +149,20 @@ declare const http: {
   post(url: string, body: string, headers?: Record<string, string>): Amo.HTTPResponse;
   getJSON(url: string, headers?: Record<string, string>): Amo.HTTPJSONResponse;
   downloadFile(url: string, outputPath: string, options?: Amo.DownloadOptions): Amo.HTTPResponse;
+};
+
+// Encoding API
+declare const encoding: {
+  // Base64 methods
+  base64Encode(input: string): string;
+  base64Decode(input: string): Amo.Base64Result;
+  
+  // Future encoding methods can be added here
+  // urlEncode(input: string): string;
+  // urlDecode(input: string): Amo.Result;
+  // hexEncode(input: string): string;
+  // hexDecode(input: string): Amo.Result;
+  // md5(input: string): string;
 };
 
 // Console API
