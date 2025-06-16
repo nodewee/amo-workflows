@@ -81,6 +81,12 @@ function main() {
     console.log("✅ All required CLI tools are available");
     console.log("");
 
+    // Check all required LLM templates
+    if (!checkAllRequiredTemplates()) {
+        return false;
+    }
+    console.log("");
+
     // Supported document extensions
     var documentExtensions = [
         ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp",
@@ -314,6 +320,130 @@ function checkCliTool(toolName) {
     }
     
     return false;
+}
+
+function checkLlmTemplate(templateName, downloadUrl) {
+    console.log("🔍 Checking template: " + templateName);
+    
+    // First, validate if the template exists
+    var validateResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 30 });
+    
+    // Check for whitelist errors first (security)
+    if (validateResult.error && validateResult.error.indexOf("not in the allowed CLI commands list") !== -1) {
+        console.error("🚫 llm-caller command is blocked by security whitelist");
+        console.error("Error:", validateResult.error);
+        console.log("💡 Add 'llm-caller' to your allowed commands list to enable it");
+        return false;
+    }
+    
+    // If validation is successful, template exists
+    if (!validateResult.error && validateResult.stdout && validateResult.stdout.indexOf("✅") !== -1) {
+        console.log("✅ Template '" + templateName + "' is available");
+        return true;
+    }
+    
+    // Template doesn't exist, try to download it
+    console.log("⚠️  Template '" + templateName + "' not found, attempting to download...");
+    
+    if (!downloadUrl) {
+        console.error("❌ No download URL provided for template: " + templateName);
+        console.log("💡 Please manually install the template or provide a download URL");
+        return false;
+    }
+    
+    console.log("📥 Downloading template from: " + downloadUrl);
+    var downloadResult = cliCommand("llm-caller", ["template", "download", downloadUrl], { timeout: 60 });
+    
+    if (downloadResult.error) {
+        console.error("❌ Failed to download template '" + templateName + "':");
+        console.error("Error:", downloadResult.error);
+        
+        // Show stderr if available
+        if (downloadResult.stderr && downloadResult.stderr.trim()) {
+            console.error("Standard Error Output:");
+            var errorLines = downloadResult.stderr.split("\n");
+            for (var i = 0; i < errorLines.length && i < 10; i++) {
+                if (errorLines[i].trim()) {
+                    console.error("  " + errorLines[i].trim());
+                }
+            }
+        }
+        
+        console.log("💡 Please manually download and install the template:");
+        console.log("   llm-caller template download " + downloadUrl);
+        return false;
+    }
+    
+    // Check if download was successful
+    if (downloadResult.stdout && downloadResult.stdout.indexOf("successfully downloaded") !== -1) {
+        console.log("✅ Template '" + templateName + "' downloaded successfully");
+        
+        // Verify the template is now available
+        var verifyResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 30 });
+        if (!verifyResult.error && verifyResult.stdout && verifyResult.stdout.indexOf("✅") !== -1) {
+            console.log("✅ Template '" + templateName + "' verified and ready to use");
+            return true;
+        } else {
+            console.error("❌ Template download completed but validation failed");
+            console.error("Validation error:", verifyResult.error || "Unknown error");
+            return false;
+        }
+    } else {
+        console.error("❌ Template download may have failed - no success message found");
+        console.log("Download output:", downloadResult.stdout || "No output");
+        return false;
+    }
+}
+
+function checkAllRequiredTemplates() {
+    console.log("🔍 Checking required LLM templates...");
+    
+    // Define required templates with their download URLs
+    var requiredTemplates = [
+        {
+            name: "qwen-vl-ocr-image",
+            url: "https://raw.githubusercontent.com/nodewee/llm-calling-templates/main/qwen-vl-ocr-image.json"
+        },
+        {
+            name: "deepseek-ticket-extraction",
+            url: null // Add URL if available, or null to skip auto-download
+        }
+    ];
+    
+    var allTemplatesAvailable = true;
+    
+    for (var i = 0; i < requiredTemplates.length; i++) {
+        var template = requiredTemplates[i];
+        if (!checkLlmTemplate(template.name, template.url)) {
+            allTemplatesAvailable = false;
+            console.error("❌ Required template '" + template.name + "' is not available");
+            
+            if (!template.url) {
+                console.log("💡 Please manually install the '" + template.name + "' template");
+                console.log("   You can find templates at: https://github.com/nodewee/llm-calling-templates");
+                console.log("   Or create your own template for ticket/receipt extraction");
+            }
+        }
+    }
+    
+    if (!allTemplatesAvailable) {
+        console.error("❌ One or more required templates are missing");
+        console.log("💡 Please install the missing templates and try again");
+        console.log("");
+        console.log("📋 Manual installation commands:");
+        for (var i = 0; i < requiredTemplates.length; i++) {
+            var template = requiredTemplates[i];
+            if (template.url) {
+                console.log("   llm-caller template download " + template.url);
+            } else {
+                console.log("   # " + template.name + " - please find or create this template manually");
+            }
+        }
+        return false;
+    }
+    
+    console.log("✅ All required LLM templates are available");
+    return true;
 }
 
 function getDocumentFiles(inputPath, documentExtensions, verbose) {
