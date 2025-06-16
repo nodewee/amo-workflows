@@ -1,8 +1,12 @@
 //!amo
 
 // Receipt Extraction Workflow - Extract and organize information from receipts
-// Supports: single file, multiple files, or directory batch processing
-// Document types: images, PDFs, and other formats containing receipt information
+// 
+// Processing Modes:
+// 1. Single file: Process one receipt file and generate individual JSON output
+// 2. Batch processing: Process all files in a directory and generate individual JSON files + summary files
+//
+// Supported document types: PDF, images (PNG, JPG, JPEG, GIF, BMP, TIFF, WebP), Word documents (DOCX, DOC), text files
 
 function main() {
     // Get runtime variables
@@ -24,13 +28,18 @@ function main() {
     // Validate required parameters
     if (!inputPath) {
         console.error("❌ Error: Input path is required");
-        console.log("Usage: --var input=/path/to/receipts --var output=/path/to/output");
+        console.log("Usage Examples:");
+        console.log("  Single file: --var input=/path/to/receipt.pdf --var output=/path/to/output.json");
+        console.log("  Directory:   --var input=/path/to/receipts --var output=/path/to/output");
+        console.log("");
         console.log("Supported variables:");
-        console.log("  input: Input file or directory path");
-        console.log("  output: Output file or directory path");
-        console.log("  format: Summary file format (json, csv), default: json. Individual receipt files always use JSON");
-        console.log("  verbose: Enable verbose output (true/false)");
-        console.log("  overwrite: Overwrite existing files (true/false)");
+        console.log("  input: Input file or directory path (required)");
+        console.log("  output: Output file or directory path (optional)");
+        console.log("  format: Summary file format for batch processing (json, csv), default: json");
+        console.log("  verbose: Enable verbose output (true/false), default: false");
+        console.log("  overwrite: Overwrite existing files (true/false), default: false");
+        console.log("");
+        console.log("Supported file formats: .pdf, .png, .jpg, .jpeg, .gif, .bmp, .tiff, .webp, .docx, .doc, .txt");
         return false;
     }
 
@@ -42,7 +51,12 @@ function main() {
 
     // Determine if this is batch processing
     var isBatchProcessing = fs.isDir(inputPath);
-    console.log("📊 Processing mode:", isBatchProcessing ? "Batch (directory - top level files only)" : "Single file");
+    if (isBatchProcessing) {
+        console.log("📊 Processing mode: Batch (directory - top level files only)");
+    } else {
+        console.log("📊 Processing mode: Single file");
+        console.log("📄 Input file: " + fs.filename(inputPath));
+    }
 
     // Validate output path based on processing mode
     if (outputPath) {
@@ -69,7 +83,7 @@ function main() {
 
     // Supported document extensions
     var documentExtensions = [
-        ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff",
+        ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp",
         ".docx", ".doc", ".txt"
     ];
 
@@ -154,11 +168,22 @@ function main() {
     // Summary
     console.log("🎯 Processing Summary:");
     console.log("===================");
-    console.log("✅ Successful:", successCount);
-    console.log("⏭️ Skipped (existing):", skippedCount);
-    console.log("❌ Failed:", failureCount);
-    console.log("📊 Total processed:", documentFiles.length);
-    console.log("📊 Total receipts collected:", allReceipts.length);
+    if (isBatchProcessing) {
+        console.log("✅ Successful:", successCount);
+        console.log("⏭️ Skipped (existing):", skippedCount);
+        console.log("❌ Failed:", failureCount);
+        console.log("📊 Total processed:", documentFiles.length);
+        console.log("📊 Total receipts collected:", allReceipts.length);
+    } else {
+        // Single file processing summary
+        if (successCount > 0) {
+            console.log("✅ Single file processed successfully");
+        } else if (skippedCount > 0) {
+            console.log("⏭️ Single file skipped (already exists)");
+        } else {
+            console.log("❌ Single file processing failed");
+        }
+    }
 
     if (successCount > 0 || skippedCount > 0) {
         console.log("");
@@ -341,10 +366,19 @@ function getDocumentFiles(inputPath, documentExtensions, verbose) {
             console.error("❌ Failed to list directory:", listResult.error);
         }
     } else if (fs.isFile(inputPath)) {
-        // It's a file, check if it's a document file
+        // It's a single file, check if it's a supported document file
+        console.log("🔍 Processing single file: " + fs.filename(inputPath));
         if (isDocumentFile(inputPath, documentExtensions, verbose)) {
             files.push(inputPath);
+            if (verbose) {
+                console.log("✅ Single file added to processing list: " + inputPath);
+            }
+        } else {
+            console.error("❌ Unsupported file type: " + inputPath);
+            console.log("Supported formats:", documentExtensions.join(", "));
         }
+    } else {
+        console.error("❌ Input path is neither a file nor a directory: " + inputPath);
     }
     
     return files.sort();
@@ -392,10 +426,10 @@ function determineReceiptOutputPath(inputFile, baseName, outputPath, isBatchProc
             // Check if the output path has an extension
             var outputExt = fs.ext(outputPath);
             if (outputExt) {
-                // Use the specified path as-is
+                // Use the specified path as-is (user provided full file path)
                 return outputPath;
             } else {
-                // No extension specified, add the appropriate extension
+                // No extension specified, add the JSON extension
                 return outputPath + extension;
             }
         }
