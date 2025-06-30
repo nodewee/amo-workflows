@@ -367,7 +367,7 @@ function extractTextFromDocument(documentFile, textOutputFile, ocrTool, ocrLlmTe
         
         // Add LLM template if using llm-caller
         if (ocrTool === "llm-caller" && ocrLlmTemplate) {
-            extractArgs.push("--llm_template", ocrLlmTemplate);
+            extractArgs.push("--llm-template", ocrLlmTemplate);
         }
     }
     

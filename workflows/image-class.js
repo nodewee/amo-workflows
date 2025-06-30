@@ -514,10 +514,13 @@ function classifyAndOrganizeImage(imageFile, outputPath, llmCallingTemplate, max
 
     var llmArgs = [
         "call", llmCallingTemplate,
-        "--var", "image:text:" + base64String
+        "--var", "image:text:-"
     ];
 
-    var llmResult = cliCommand("llm-caller", llmArgs, { timeout: 300 });
+    var llmResult = cliCommand("llm-caller", llmArgs, {
+        timeout: 300,
+        stdin: base64String
+    });
 
     // Clean up temp file
     if (fs.exists(tempImageFile)) {
@@ -531,7 +534,7 @@ function classifyAndOrganizeImage(imageFile, outputPath, llmCallingTemplate, max
 
     if (llmResult.error) {
         // Streamlined error reporting
-        console.error("❌ LLM classification failed: llm-caller " + llmArgs.slice(0, 2).join(" "));
+        console.error("❌ LLM classification failed: llm-caller " + llmArgs.join(" "));
 
         if (llmResult.stderr && llmResult.stderr.trim()) {
             console.error(llmResult.stderr.trim());

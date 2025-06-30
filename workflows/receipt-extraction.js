@@ -636,7 +636,7 @@ function processReceipt(documentFile, outputFile, verbose) {
         documentFile,
         "--content-type", "image",
         "--ocr", "llm-caller",
-        "--llm_template", "qwen-vl-ocr-image",
+        "--llm-template", "qwen-vl-ocr-image",
         "-o", tempTextFile
     ];
     

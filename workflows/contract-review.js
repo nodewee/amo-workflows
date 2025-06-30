@@ -378,7 +378,7 @@ function processDocument(documentFile, reviewOutputFile, ocrTool, ocrLlmTemplate
         
         // Add LLM template if using llm-caller
         if (ocrTool === "llm-caller" && ocrLlmTemplate) {
-            extractArgs.push("--llm_template", ocrLlmTemplate);
+            extractArgs.push("--llm-template", ocrLlmTemplate);
         }
     }
     
