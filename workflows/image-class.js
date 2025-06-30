@@ -424,7 +424,7 @@ function classifyAndOrganizeImage(imageFile, outputPath, llmCallingTemplate, max
     // Step 1: Resize image if needed and convert to base64
     console.log("🔄 Step 1: Processing image...");
 
-    var needsConvert =  fs.ext(imageFile).toLowerCase() in [".gif", ".heic", ".heif"]
+    var needsConvert = [".gif", ".heic", ".heif"].indexOf(fs.ext(imageFile).toLowerCase()) !== -1;
     var needsResize = checkIfResizeNeeded(imageFile, maxSize);
     if (needsResize.error) {
         return {
