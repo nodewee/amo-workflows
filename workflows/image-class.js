@@ -1,120 +1,120 @@
 //!amo
 
-// Image Classifier Workflow - Classify images using LLM and organize them into folders
-// Supports: single file or directory batch processing
+// 图片分类工作流 - 使用LLM对图片进行分类并按类别整理到文件夹
+// 支持：单文件或目录批量处理
 
 function main() {
-    // Get runtime variables
+    // 获取运行时变量
     var inputPath = getVar("input") || "";
     var outputPath = getVar("output") || "";
     var verbose = getVar("verbose") === "true";
     var llmCallingTemplate = getVar("llm_calling_template") || "ollama-image-class";
     var maxSize = getVar("max_size") || 800;
 
-    console.log("🖼️➡️📂 Image Classifier Workflow");
+    console.log("🖼️➡️📂 图片分类工作流");
     console.log("===============================");
-    console.log("Input:", inputPath || "Not specified");
-    console.log("Output:", outputPath || "Same as input");
-    console.log("LLM Calling Template:", llmCallingTemplate);
-    console.log("Max Image Size:", maxSize + "px");
-    console.log("Verbose:", verbose ? "Yes" : "No");
+    console.log("输入路径:", inputPath || "未指定");
+    console.log("输出路径:", outputPath || "与输入相同");
+    console.log("LLM调用模板:", llmCallingTemplate);
+    console.log("最大图片尺寸:", maxSize + "px");
+    console.log("详细模式:", verbose ? "是" : "否");
     console.log("");
 
-    // Validate required parameters
+    // 校验必需参数
     if (!inputPath) {
-        console.error("❌ Error: Input path is required");
-        console.log("Usage: --var input=/path/to/images --var output=/path/to/output");
-        console.log("Supported variables:");
-        console.log("  input: Input file or directory path containing images");
-        console.log("  output: Output directory path for organized images");
-        console.log("  llm_calling_template: LLM model for image classification (default: ollama-image-class)");
-        console.log("  max_size: Maximum size for image dimension in pixels (default: 800)");
-        console.log("  verbose: Enable verbose output (true/false)");
+        console.error("❌ 错误：必须指定输入路径");
+        console.log("用法示例: --var input=/path/to/images --var output=/path/to/output");
+        console.log("支持的变量:");
+        console.log("  input: 包含图片的输入文件或目录路径");
+        console.log("  output: 分类后图片的输出目录路径");
+        console.log("  llm_calling_template: 图片分类用LLM模型（默认ollama-image-class）");
+        console.log("  max_size: 图片最大尺寸（像素，默认800）");
+        console.log("  verbose: 是否显示详细信息（true/false）");
         return false;
     }
 
-    // Check if input path exists
+    // 检查输入路径是否存在
     if (!fs.exists(inputPath)) {
-        console.error("❌ Error: Input path does not exist:", inputPath);
+        console.error("❌ 错误：输入路径不存在:", inputPath);
         return false;
     }
 
-    // Determine if this is single file or batch processing
+    // 判断是单文件还是批量处理
     var isBatchProcessing = fs.isDir(inputPath);
-    console.log("📊 Processing mode:", isBatchProcessing ? "Batch (directory)" : "Single file");
+    console.log("📊 处理模式:", isBatchProcessing ? "批量（目录）" : "单文件");
 
-    // Validate output path
+    // 校验输出路径
     if (outputPath) {
         var outputValidation = validateOutputPath(outputPath);
         if (!outputValidation.valid) {
-            console.error("❌ Error:", outputValidation.error);
+            console.error("❌ 错误:", outputValidation.error);
             return false;
         }
         outputPath = outputValidation.path;
-        console.log("✅ Output path validated:", outputPath);
+        console.log("✅ 输出路径校验通过:", outputPath);
     } else {
-        // Use input directory as output path if not specified
+        // 未指定输出路径时，使用输入目录
         outputPath = isBatchProcessing ? inputPath : fs.dirname(inputPath);
     }
     console.log("");
 
-    // Check if required CLI tools are available
-    console.log("🔍 Checking required CLI tools...");
-    // Check if ImageMagick is available
+    // 检查所需CLI工具
+    console.log("🔍 检查所需CLI工具...");
+    // 检查ImageMagick
     if (!checkCliTool("convert")) {
-        console.error("❌ Error: ImageMagick is required");
+        console.error("❌ 错误：需要安装ImageMagick");
         return false;
     }
     if (!checkCliTool("llm-caller")) {
-        console.error("❌ Error: 'llm-caller' tool is required");
+        console.error("❌ 错误：需要安装llm-caller工具");
         return false;
     }
-    console.log("✅ All required CLI tools are available");
+    console.log("✅ 所需CLI工具均可用");
     console.log("");
 
-    // Check required LLM template
+    // 检查所需LLM模板
     if (!checkRequiredTemplate(llmCallingTemplate)) {
         return false;
     }
     console.log("");
 
-    // Supported image extensions
+    // 支持的图片扩展名
     var imageExtensions = [
         ".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp",
         ".gif", ".heic", ".heif"
     ];
 
-    // Get list of image files to process
+    // 获取待处理图片文件列表
     var imageFiles = [];
     if (isBatchProcessing) {
         imageFiles = getImageFiles(inputPath, imageExtensions, verbose);
     } else {
-        // Single file mode
+        // 单文件模式
         if (isImageFile(inputPath, imageExtensions)) {
             imageFiles.push(inputPath);
         } else {
-            console.error("❌ Input file is not a supported image format:", inputPath);
-            console.log("Supported formats:", imageExtensions.join(", "));
+            console.error("❌ 输入文件不是支持的图片格式:", inputPath);
+            console.log("支持的格式:", imageExtensions.join(", "));
             return false;
         }
     }
 
     if (imageFiles.length === 0) {
-        console.error("❌ No image files found in:", inputPath);
-        console.log("Supported formats:", imageExtensions.join(", "));
+        console.error("❌ 未找到图片文件:", inputPath);
+        console.log("支持的格式:", imageExtensions.join(", "));
         return false;
     }
 
-    console.log("📁 Found", imageFiles.length, "image file(s) to process:");
+    console.log("📁 共找到", imageFiles.length, "个图片文件:");
     for (var i = 0; i < Math.min(imageFiles.length, 10); i++) {
         console.log("  " + (i + 1) + ". " + fs.filename(imageFiles[i]));
     }
     if (imageFiles.length > 10) {
-        console.log("  ... and " + (imageFiles.length - 10) + " more files");
+        console.log("  ... 以及其他 " + (imageFiles.length - 10) + " 个文件");
     }
     console.log("");
 
-    // Process each image file
+    // 处理每个图片文件
     var successCount = 0;
     var failureCount = 0;
     var renameCount = 0;
@@ -124,62 +124,62 @@ function main() {
         var imageFile = imageFiles[i];
         var fileName = fs.filename(imageFile);
 
-        console.log("🖼️ Processing [" + (i + 1) + "/" + imageFiles.length + "]: " + fileName);
+        console.log("🖼️ 正在处理 [" + (i + 1) + "/" + imageFiles.length + "]: " + fileName);
 
-        // Classify the image and move to category folder
+        // 分类并移动到类别文件夹
         var result = classifyAndOrganizeImage(imageFile, outputPath, llmCallingTemplate, maxSize, verbose);
 
         if (result.success) {
             successCount++;
-            console.log("✅ Success: Moved to category '" + result.category + "'");
+            console.log("✅ 成功: 移动到类别 '" + result.category + "'");
 
-            // Check if file was renamed
+            // 检查是否重命名
             if (result.destinationFile && result.destinationFile !== fileName) {
                 renameCount++;
             }
 
-            // Update category statistics
+            // 更新类别统计
             if (!categoryStats[result.category]) {
                 categoryStats[result.category] = 0;
             }
             categoryStats[result.category]++;
         } else {
             failureCount++;
-            console.log("❌ Failed: " + fileName + " - " + result.error);
+            console.log("❌ 失败: " + fileName + " - " + result.error);
         }
         console.log("");
     }
 
-    // Summary
-    console.log("🎯 Classification Summary:");
+    // 总结
+    console.log("🎯 分类总结:");
     console.log("=======================");
-    console.log("✅ Successfully classified and organized:", successCount);
-    console.log("❌ Failed:", failureCount);
+    console.log("✅ 成功分类并整理:", successCount);
+    console.log("❌ 失败:", failureCount);
     if (renameCount > 0) {
-        console.log("🔄 Auto-renamed files (due to name conflicts):", renameCount);
+        console.log("🔄 自动重命名文件（因重名）:", renameCount);
     }
-    console.log("📊 Total processed:", imageFiles.length);
+    console.log("📊 总计处理:", imageFiles.length);
 
-    // Show category statistics
+    // 显示类别统计
     if (successCount > 0) {
-        console.log("\n📊 Category Statistics:");
+        console.log("\n📊 类别统计:");
         var categories = Object.keys(categoryStats).sort();
         for (var i = 0; i < categories.length; i++) {
             var category = categories[i];
             var count = categoryStats[category];
             var percentage = Math.round((count / successCount) * 100);
-            console.log("  " + category + ": " + count + " images (" + percentage + "%)");
+            console.log("  " + category + ": " + count + " 张图片 (" + percentage + "%)");
         }
 
         console.log("");
-        console.log("🎉 Image classification completed successfully!");
-        console.log("📂 Output location:", outputPath);
+        console.log("🎉 图片分类完成！");
+        console.log("📂 输出位置:", outputPath);
     }
 
     return true;
 }
 
-// ======================== Helper Functions ========================
+// ======================== 辅助函数 ========================
 
 function validateOutputPath(outputPath) {
     // Check if output path exists
@@ -215,7 +215,7 @@ function validateOutputPath(outputPath) {
 function checkCliTool(toolName) {
     // For ImageMagick, check only magick command
     if (toolName === "convert") {
-        var magickResult = cliCommand("magick", ["-version"], { timeout: 10 });
+        var magickResult = cliCommand("magick", ["-version"], { timeout: 3600 });
         if (magickResult.stdout && magickResult.stdout.indexOf("ImageMagick") !== -1) {
             console.log("✅ ImageMagick is available");
             return "magick"; // Return the command name to use
@@ -228,7 +228,7 @@ function checkCliTool(toolName) {
 
     // For other tools, use the standard check
     var testArgs = toolName === "llm-caller" ? ["-h"] : ["-h"];
-    var result = cliCommand(toolName, testArgs, { timeout: 10 });
+    var result = cliCommand(toolName, testArgs, { timeout: 3600 });
 
     // Check for whitelist errors first (security)
     if (result.error && result.error.indexOf("not in the allowed CLI commands list") !== -1) {
@@ -264,7 +264,7 @@ function checkLlmTemplate(templateName, downloadUrl) {
     console.log("🔍 Checking template: " + templateName);
     
     // First, validate if the template exists
-    var validateResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 30 });
+    var validateResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 3600 });
     
     // Check for whitelist errors first (security)
     if (validateResult.error && validateResult.error.indexOf("not in the allowed CLI commands list") !== -1) {
@@ -292,7 +292,7 @@ function checkLlmTemplate(templateName, downloadUrl) {
     }
     
     console.log("📥 Downloading template from: " + downloadUrl);
-    var downloadResult = cliCommand("llm-caller", ["template", "download", downloadUrl], { timeout: 60 });
+    var downloadResult = cliCommand("llm-caller", ["template", "download", downloadUrl], { timeout: 3600 });
     
     if (downloadResult.error) {
         console.error("❌ Failed to download template '" + templateName + "':");
@@ -319,7 +319,7 @@ function checkLlmTemplate(templateName, downloadUrl) {
         console.log("✅ Template '" + templateName + "' downloaded successfully");
         
         // Verify the template is now available
-        var verifyResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 30 });
+        var verifyResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 3600 });
         if (!verifyResult.error && verifyResult.stdout && verifyResult.stdout.indexOf("✅") !== -1) {
             console.log("✅ Template '" + templateName + "' verified and ready to use");
             return true;
@@ -518,7 +518,7 @@ function classifyAndOrganizeImage(imageFile, outputPath, llmCallingTemplate, max
     ];
 
     var llmResult = cliCommand("llm-caller", llmArgs, {
-        timeout: 300,
+        timeout: 3600,
         stdin: base64String
     });
 
@@ -631,7 +631,7 @@ function classifyAndOrganizeImage(imageFile, outputPath, llmCallingTemplate, max
 function checkIfResizeNeeded(imageFile, maxSize) {
     // Use ImageMagick to get image dimensions
     var args = ["identify", "-format", "%w %h", imageFile];
-    var result = cliCommand("magick", args, { timeout: 30 });
+    var result = cliCommand("magick", args, { timeout: 3600 });
 
     if (result.error) {
         // Streamlined error reporting
@@ -680,7 +680,7 @@ function resizeImage(sourceFile, destFile, maxSize) {
 
     args = [sourceFile, "-resize", maxSize + "x" + maxSize + ">", "-strip", destFile];
 
-    var result = cliCommand("magick", args, { timeout: 60 });
+    var result = cliCommand("magick", args, { timeout: 3600 });
 
     if (result.error) {
         // Streamlined error reporting
@@ -715,7 +715,7 @@ function convertImage(sourceFile, destFile) {
 
     args = [sourceFile, "-strip", destFile];
 
-    var result = cliCommand("magick", args, { timeout: 60 });
+    var result = cliCommand("magick", args, { timeout: 3600 });
 
     if (result.error) {
         // Streamlined error reporting

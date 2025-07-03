@@ -1,114 +1,114 @@
 //!amo
 
-// Receipt Extraction Workflow - Extract and organize information from receipts
+// 小票信息提取工作流 - 从小票中提取并整理信息
 // 
-// Processing Modes:
-// 1. Single file: Process one receipt file and generate individual JSON output
-// 2. Batch processing: Process all files in a directory and generate individual JSON files + summary files
+// 处理模式：
+// 1. 单文件：处理一个小票文件并生成单独的JSON输出
+// 2. 批量处理：处理目录下所有文件，生成单独JSON和汇总文件
 //
-// Supported document types: PDF, images (PNG, JPG, JPEG, GIF, BMP, TIFF, WebP), Word documents (DOCX, DOC), text files
+// 支持文档类型：PDF、图片（PNG、JPG、JPEG、GIF、BMP、TIFF、WebP）、Word文档（DOCX、DOC）、文本文件
 
 function main() {
-    // Get runtime variables
+    // 获取运行时变量
     var inputPath = getVar("input") || "";
     var outputPath = getVar("output") || "";
     var outputFormat = getVar("format") || "json"; // Output format for summary files: json or csv
     var overwrite = getVar("overwrite") === "true";
     var verbose = getVar("verbose") === "true";
 
-    console.log("🧾➡️📊 Receipt Extraction Workflow");
+    console.log("🧾➡️📊 小票信息提取工作流");
     console.log("===============================");
-    console.log("Input:", inputPath || "Not specified");
-    console.log("Output:", outputPath || "Same as input");
-    console.log("Summary Format:", outputFormat);
-    console.log("Verbose:", verbose ? "Yes" : "No");
-    console.log("Overwrite existing:", overwrite ? "Yes" : "No");
+    console.log("输入:", inputPath || "未指定");
+    console.log("输出:", outputPath || "与输入相同");
+    console.log("汇总格式:", outputFormat);
+    console.log("详细模式:", verbose ? "是" : "否");
+    console.log("覆盖已存在:", overwrite ? "是" : "否");
     console.log("");
 
-    // Validate required parameters
+    // 校验必需参数
     if (!inputPath) {
-        console.error("❌ Error: Input path is required");
-        console.log("Usage Examples:");
-        console.log("  Single file: --var input=/path/to/receipt.pdf --var output=/path/to/output.json");
-        console.log("  Directory:   --var input=/path/to/receipts --var output=/path/to/output");
+        console.error("❌ 错误：必须指定输入路径");
+        console.log("用法示例:");
+        console.log("  单文件: --var input=/path/to/receipt.pdf --var output=/path/to/output.json");
+        console.log("  目录:   --var input=/path/to/receipts --var output=/path/to/output");
         console.log("");
-        console.log("Supported variables:");
-        console.log("  input: Input file or directory path (required)");
-        console.log("  output: Output file or directory path (optional)");
-        console.log("  format: Summary file format for batch processing (json, csv), default: json");
-        console.log("  verbose: Enable verbose output (true/false), default: false");
-        console.log("  overwrite: Overwrite existing files (true/false), default: false");
+        console.log("支持的变量:");
+        console.log("  input: 输入文件或目录路径（必填）");
+        console.log("  output: 输出文件或目录路径（可选）");
+        console.log("  format: 批量处理汇总文件格式（json, csv），默认json");
+        console.log("  verbose: 是否显示详细信息（true/false），默认false");
+        console.log("  overwrite: 是否覆盖已存在文件（true/false），默认false");
         console.log("");
-        console.log("Supported file formats: .pdf, .png, .jpg, .jpeg, .gif, .bmp, .tiff, .webp, .docx, .doc, .txt");
+        console.log("支持的文件格式: .pdf, .png, .jpg, .jpeg, .gif, .bmp, .tiff, .webp, .docx, .doc, .txt");
         return false;
     }
 
-    // Check if input path exists
+    // 检查输入路径是否存在
     if (!fs.exists(inputPath)) {
-        console.error("❌ Error: Input path does not exist:", inputPath);
+        console.error("❌ 错误：输入路径不存在:", inputPath);
         return false;
     }
 
-    // Determine if this is batch processing
+    // 判断是否为批量处理
     var isBatchProcessing = fs.isDir(inputPath);
     if (isBatchProcessing) {
-        console.log("📊 Processing mode: Batch (directory - top level files only)");
+        console.log("📊 处理模式: 批量（目录-仅顶层文件）");
     } else {
-        console.log("📊 Processing mode: Single file");
-        console.log("📄 Input file: " + fs.filename(inputPath));
+        console.log("📊 处理模式: 单文件");
+        console.log("📄 输入文件: " + fs.filename(inputPath));
     }
 
-    // Validate output path based on processing mode
+    // 校验输出路径
     if (outputPath) {
         var outputValidation = validateOutputPath(outputPath, isBatchProcessing, outputFormat);
         if (!outputValidation.valid) {
-            console.error("❌ Error:", outputValidation.error);
+            console.error("❌ 错误:", outputValidation.error);
             return false;
         }
         outputPath = outputValidation.path;
-        console.log("✅ Output path validated:", outputPath);
+        console.log("✅ 输出路径校验通过:", outputPath);
     }
     console.log("");
 
-    // Check if required CLI tools are available
-    console.log("🔍 Checking required CLI tools...");
+    // 检查所需CLI工具
+    console.log("🔍 检查所需CLI工具...");
     if (!checkCliTool("doc-to-text")) {
         return false;
     }
     if (!checkCliTool("llm-caller")) {
         return false;
     }
-    console.log("✅ All required CLI tools are available");
+    console.log("✅ 所需CLI工具均可用");
     console.log("");
 
-    // Check all required LLM templates
+    // 检查所需LLM模板
     if (!checkAllRequiredTemplates()) {
         return false;
     }
     console.log("");
 
-    // Supported document extensions
+    // 支持的文档扩展名
     var documentExtensions = [
         ".pdf", ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff", ".webp",
         ".docx", ".doc", ".txt"
     ];
 
-    // Get list of document files to process
+    // 获取待处理文档文件列表
     var documentFiles = getDocumentFiles(inputPath, documentExtensions, verbose);
 
     if (documentFiles.length === 0) {
-        console.error("❌ No supported document files found in:", inputPath);
-        console.log("Supported formats:", documentExtensions.join(", "));
+        console.error("❌ 未找到支持的文档文件:", inputPath);
+        console.log("支持的格式:", documentExtensions.join(", "));
         return false;
     }
 
-    console.log("📁 Found", documentFiles.length, "document file(s) to process:");
+    console.log("📁 共找到", documentFiles.length, "个文档文件:");
     for (var i = 0; i < documentFiles.length; i++) {
         console.log("  " + (i + 1) + ". " + fs.filename(documentFiles[i]));
     }
     console.log("");
 
-    // Process each document file
+    // 处理每个文档文件
     var successCount = 0;
     var failureCount = 0;
     var allReceipts = [];
@@ -119,20 +119,20 @@ function main() {
         var fileName = fs.filename(documentFile);
         var baseName = fs.basename(documentFile);
         
-        console.log("🧾 Processing [" + (i + 1) + "/" + documentFiles.length + "]: " + fileName);
+        console.log("🧾 正在处理 [" + (i + 1) + "/" + documentFiles.length + "]: " + fileName);
         
-        // Determine individual output file path
+        // 计算单个输出文件路径
         var receiptOutputFile = determineReceiptOutputPath(documentFile, baseName, outputPath, isBatchProcessing, outputFormat);
         
-        // Check if output file already exists
+        // 检查输出文件是否已存在
         if (!overwrite && fs.exists(receiptOutputFile)) {
-            console.log("⏭️  Skipping (file exists): " + fs.filename(receiptOutputFile));
+            console.log("⏭️  跳过（文件已存在）: " + fs.filename(receiptOutputFile));
             
-            // Always try to read existing data for summary, even when skipping
-                var existingData = readExistingReceiptData(receiptOutputFile);
-                if (existingData) {
-                    allReceipts.push(existingData);
-                    console.log("📥 Added existing data to summary");
+            // 跳过时也尝试读取已存在数据用于汇总
+            var existingData = readExistingReceiptData(receiptOutputFile);
+            if (existingData) {
+                allReceipts.push(existingData);
+                console.log("📥 已添加已存在数据到汇总");
                 skippedCount++;
             }
             
@@ -140,62 +140,62 @@ function main() {
             continue;
         }
         
-        // Process document: extract text -> LLM extraction -> save result
+        // 文档处理：提取文本->LLM抽取->保存结果
         var extractedData = processReceipt(documentFile, receiptOutputFile, verbose);
         if (extractedData) {
             successCount++;
-            console.log("✅ Success: " + fs.filename(receiptOutputFile));
+            console.log("✅ 成功: " + fs.filename(receiptOutputFile));
             
-            // Add to collection for summary if we're doing batch processing
+            // 批量处理时加入汇总
             if (isBatchProcessing) {
                 allReceipts.push(extractedData);
             }
         } else {
             failureCount++;
-            console.log("❌ Failed: " + fileName);
+            console.log("❌ 失败: " + fileName);
         }
         console.log("");
     }
 
-    // Create summary file for batch processing - regardless of whether we processed new files
+    // 批量处理时生成汇总文件
     if (isBatchProcessing && allReceipts.length > 0) {
-        // If no explicit output path is provided, use the input directory
+        // 未指定输出路径时，使用输入目录
         var summaryOutputPath = outputPath || inputPath;
         
-        console.log("📊 Creating summary files in: " + summaryOutputPath);
+        console.log("📊 正在创建汇总文件于: " + summaryOutputPath);
         var summaryFiles = createSummaryFile(allReceipts, summaryOutputPath, outputFormat, overwrite);
         if (summaryFiles) {
             for (var i = 0; i < summaryFiles.length; i++) {
-                console.log("📊 Created file: " + fs.filename(summaryFiles[i]));
+                console.log("📊 已创建文件: " + fs.filename(summaryFiles[i]));
             }
         }
     }
 
-    // Summary
-    console.log("🎯 Processing Summary:");
+    // 总结
+    console.log("🎯 处理总结:");
     console.log("===================");
     if (isBatchProcessing) {
-        console.log("✅ Successful:", successCount);
-        console.log("⏭️ Skipped (existing):", skippedCount);
-        console.log("❌ Failed:", failureCount);
-        console.log("📊 Total processed:", documentFiles.length);
-        console.log("📊 Total receipts collected:", allReceipts.length);
+        console.log("✅ 成功:", successCount);
+        console.log("⏭️ 跳过（已存在）:", skippedCount);
+        console.log("❌ 失败:", failureCount);
+        console.log("📊 总计处理:", documentFiles.length);
+        console.log("📊 汇总收集:", allReceipts.length);
     } else {
-        // Single file processing summary
+        // 单文件处理总结
         if (successCount > 0) {
-            console.log("✅ Single file processed successfully");
+            console.log("✅ 单文件处理成功");
         } else if (skippedCount > 0) {
-            console.log("⏭️ Single file skipped (already exists)");
+            console.log("⏭️ 单文件已跳过（已存在）");
         } else {
-            console.log("❌ Single file processing failed");
+            console.log("❌ 单文件处理失败");
         }
     }
 
     if (successCount > 0 || skippedCount > 0) {
         console.log("");
-        console.log("🎉 Receipt processing completed successfully!");
+        console.log("🎉 小票处理完成！");
         if (outputPath) {
-            console.log("📂 Output location:", outputPath);
+            console.log("📂 输出位置:", outputPath);
         }
     }
 
@@ -279,7 +279,7 @@ function validateOutputPath(outputPath, isBatchProcessing, outputFormat) {
 }
 
 function checkCliTool(toolName) {
-    var result = cliCommand(toolName, ["-h"], { timeout: 10 });
+    var result = cliCommand(toolName, ["-h"], { timeout: 3600 });
     
     // Check for whitelist errors first (security)
     if (result.error && result.error.indexOf("not in the allowed CLI commands list") !== -1) {
@@ -326,7 +326,7 @@ function checkLlmTemplate(templateName, downloadUrl) {
     console.log("🔍 Checking template: " + templateName);
     
     // First, validate if the template exists
-    var validateResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 30 });
+    var validateResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 3600 });
     
     // Check for whitelist errors first (security)
     if (validateResult.error && validateResult.error.indexOf("not in the allowed CLI commands list") !== -1) {
@@ -352,7 +352,7 @@ function checkLlmTemplate(templateName, downloadUrl) {
     }
     
     console.log("📥 Downloading template from: " + downloadUrl);
-    var downloadResult = cliCommand("llm-caller", ["template", "download", downloadUrl], { timeout: 60 });
+    var downloadResult = cliCommand("llm-caller", ["template", "download", downloadUrl], { timeout: 3600 });
     
     if (downloadResult.error) {
         console.error("❌ Failed to download template '" + templateName + "':");
@@ -379,7 +379,7 @@ function checkLlmTemplate(templateName, downloadUrl) {
         console.log("✅ Template '" + templateName + "' downloaded successfully");
         
         // Verify the template is now available
-        var verifyResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 30 });
+        var verifyResult = cliCommand("llm-caller", ["template", "validate", templateName], { timeout: 3600 });
         if (!verifyResult.error && verifyResult.stdout && verifyResult.stdout.indexOf("✅") !== -1) {
             console.log("✅ Template '" + templateName + "' verified and ready to use");
             return true;
@@ -647,7 +647,7 @@ function processReceipt(documentFile, outputFile, verbose) {
     
     console.log("🔧 Command: doc-to-text " + extractArgs.join(" "));
     
-    var extractResult = cliCommand("doc-to-text", extractArgs, { timeout: 600 });
+    var extractResult = cliCommand("doc-to-text", extractArgs, { timeout: 3600 });
     
     if (extractResult.error) {
         console.error("❌ Text extraction failed:");
@@ -755,7 +755,7 @@ function processReceipt(documentFile, outputFile, verbose) {
 
     console.log("🔧 Command: llm-caller call deepseek-ticket-extraction --var text:text:[" + textContent.content.length + " characters]");
     
-    var llmResult = cliCommand("llm-caller", llmArgs, { timeout: 600 });
+    var llmResult = cliCommand("llm-caller", llmArgs, { timeout: 3600 });
     
     if (llmResult.error) {
         console.error("❌ LLM extraction failed:");

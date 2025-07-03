@@ -1,54 +1,54 @@
 //!amo
 
-// Base64 Encoding/Decoding Demo
-// Demonstrates the encoding module with base64 functions
+// Base64 编码/解码演示
+// 演示 encoding 模块的 base64 函数
 
 function main() {
-    console.log("🔄 Base64 Encoding/Decoding Demo");
+    console.log("🔄 Base64 编码/解码演示");
     console.log("=================================");
     
-    // Get input text from runtime variables or use default
+    // 从运行时变量获取输入文本或使用默认值
     var input = getVar("input") || "Hello, Amo Workflow!";
-    console.log("📝 Original text:", input);
+    console.log("📝 原始文本:", input);
     
-    // Encode to base64
-    console.log("\n🔒 Encoding to Base64");
+    // 编码为 base64
+    console.log("\n🔒 正在编码为 Base64");
     var encoded = encoding.base64Encode(input);
-    console.log("✅ Base64 encoded:", encoded);
+    console.log("✅ Base64 编码结果:", encoded);
     
-    // Decode from base64
-    console.log("\n🔓 Decoding from Base64");
+    // 解码 base64
+    console.log("\n🔓 正在解码 Base64");
     var decodeResult = encoding.base64Decode(encoded);
     
     if (decodeResult.success) {
-        console.log("✅ Decoded text:", decodeResult.text);
+        console.log("✅ 解码文本:", decodeResult.text);
         
-        // Verify round trip
+        // 校验回转
         if (input === decodeResult.text) {
-            console.log("✓ Round-trip successful: Decoded text matches original");
+            console.log("✓ 回转成功：解码文本与原始一致");
         } else {
-            console.error("✗ Round-trip failed: Decoded text differs from original");
+            console.error("✗ 回转失败：解码文本与原始不一致");
         }
     } else {
-        console.error("❌ Decode failed:", decodeResult.error);
+        console.error("❌ 解码失败:", decodeResult.error);
     }
     
-    // Demonstrate error handling with invalid base64
-    console.log("\n🧪 Testing invalid Base64 input");
+    // 演示无效 base64 的错误处理
+    console.log("\n🧪 测试无效 Base64 输入");
     var invalidBase64 = "This is not valid base64!@#";
     var invalidResult = encoding.base64Decode(invalidBase64);
     
     if (!invalidResult.success) {
-        console.log("✅ Error correctly detected:", invalidResult.error);
+        console.log("✅ 正确检测到错误:", invalidResult.error);
     }
     
-    console.log("\n🎯 Usage examples:");
-    console.log("  • Encode: var encoded = encoding.base64Encode('your text')");
-    console.log("  • Decode: var result = encoding.base64Decode(encoded)");
+    console.log("\n🎯 用法示例:");
+    console.log("  • 编码: var encoded = encoding.base64Encode('your text')");
+    console.log("  • 解码: var result = encoding.base64Decode(encoded)");
     console.log("           if (result.success) console.log(result.text)");
     
     return true;
 }
 
-// Execute main function
+// 执行主函数
 main(); 

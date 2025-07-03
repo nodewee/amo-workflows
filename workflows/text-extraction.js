@@ -1,106 +1,106 @@
 //!amo
 
-// Text Extraction Workflow - Extract pure text from documents using doc-to-text
-// Supports: single file, multiple files, or directory batch processing (top level files only)
-// Document types: pdf, docx, doc, txt, and images
+// 文本提取工作流 - 使用 doc-to-text 从文档中提取纯文本
+// 支持：单文件、多文件或目录批量处理（仅顶层文件）
+// 支持文档类型：pdf, docx, doc, txt, 图片
 
 function main() {
-    // Get runtime variables
+    // 获取运行时变量
     var inputPath = getVar("input") || "";
     var outputPath = getVar("output") || "";
-    var ocrTool = getVar("ocr") || "interactive"; // OCR tool: llm-caller, surya_ocr, or interactive
-    var ocrLlmTemplate = getVar("ocr_llm_template") || ""; // LLM template for llm-caller OCR
-    var contentType = getVar("content_type") || ""; // Content type: text or image
+    var ocrTool = getVar("ocr") || "interactive"; // OCR工具：llm-caller, surya_ocr, 或 interactive
+    var ocrLlmTemplate = getVar("ocr_llm_template") || ""; // llm-caller OCR的LLM模板
+    var contentType = getVar("content_type") || ""; // 内容类型：text 或 image
     var overwrite = getVar("overwrite") === "true";
     var verbose = getVar("verbose") === "true";
 
-    console.log("📄➡️📝 Text Extraction Workflow");
+    console.log("📄➡️📝 文本提取工作流");
     console.log("===============================");
-    console.log("Input:", inputPath || "Not specified");
-    console.log("Output:", outputPath || "Same as input");
-    console.log("OCR Tool:", ocrTool);
+    console.log("输入:", inputPath || "未指定");
+    console.log("输出:", outputPath || "与输入相同");
+    console.log("OCR工具:", ocrTool);
     if (ocrTool === "llm-caller" && ocrLlmTemplate) {
-        console.log("OCR LLM Template:", ocrLlmTemplate);
+        console.log("OCR LLM模板:", ocrLlmTemplate);
     }
-    console.log("Content Type:", contentType);
-    console.log("Verbose:", verbose ? "Yes" : "No");
-    console.log("Overwrite existing:", overwrite ? "Yes" : "No");
+    console.log("内容类型:", contentType);
+    console.log("详细模式:", verbose ? "是" : "否");
+    console.log("覆盖已存在:", overwrite ? "是" : "否");
     console.log("");
 
-    // Validate required parameters
+    // 校验必需参数
     if (!inputPath) {
-        console.error("❌ Error: Input path is required");
-        console.log("Usage: --var input=/path/to/document --var output=/path/to/output");
-        console.log("Supported variables:");
-        console.log("  input: Input file or directory path");
-        console.log("  output: Output file or directory path");
-        console.log("  ocr: OCR tool (llm-caller, surya_ocr, interactive)");
-        console.log("  ocr_llm_template: LLM template for OCR (required when ocr=llm-caller)");
-        console.log("  content_type: Content type (text, image, default: image)");
-        console.log("  verbose: Enable verbose output (true/false)");
-        console.log("  overwrite: Overwrite existing files (true/false)");
+        console.error("❌ 错误：必须指定输入路径");
+        console.log("用法示例: --var input=/path/to/document --var output=/path/to/output");
+        console.log("支持的变量:");
+        console.log("  input: 输入文件或目录路径");
+        console.log("  output: 输出文件或目录路径");
+        console.log("  ocr: OCR工具（llm-caller, surya_ocr, interactive）");
+        console.log("  ocr_llm_template: OCR用LLM模板（ocr=llm-caller时必填）");
+        console.log("  content_type: 内容类型（text, image，默认image）");
+        console.log("  verbose: 是否显示详细信息（true/false）");
+        console.log("  overwrite: 是否覆盖已存在文件（true/false）");
         return false;
     }
 
-    // Validate OCR tool and template combination
+    // 校验OCR工具与模板组合
     if (ocrTool === "llm-caller" && !ocrLlmTemplate) {
-        console.error("❌ Error: ocr_llm_template is required when using llm-caller as OCR tool");
-        console.log("Example: --var ocr=llm-caller --var ocr_llm_template=qwen-vl-ocr");
+        console.error("❌ 错误：使用llm-caller做OCR时必须指定ocr_llm_template");
+        console.log("示例: --var ocr=llm-caller --var ocr_llm_template=qwen-vl-ocr");
         return false;
     }
 
-    // Check if input path exists
+    // 检查输入路径是否存在
     if (!fs.exists(inputPath)) {
-        console.error("❌ Error: Input path does not exist:", inputPath);
+        console.error("❌ 错误：输入路径不存在:", inputPath);
         return false;
     }
 
-    // Determine if this is batch processing
+    // 判断是否为批量处理
     var isBatchProcessing = fs.isDir(inputPath);
-    console.log("📊 Processing mode:", isBatchProcessing ? "Batch (directory - top level files only)" : "Single file");
+    console.log("📊 处理模式:", isBatchProcessing ? "批量（目录-仅顶层文件）" : "单文件");
 
-    // Validate output path based on processing mode
+    // 校验输出路径
     if (outputPath) {
         var outputValidation = validateOutputPath(outputPath, isBatchProcessing);
         if (!outputValidation.valid) {
-            console.error("❌ Error:", outputValidation.error);
+            console.error("❌ 错误:", outputValidation.error);
             return false;
         }
         outputPath = outputValidation.path;
-        console.log("✅ Output path validated:", outputPath);
+        console.log("✅ 输出路径校验通过:", outputPath);
     }
     console.log("");
 
-    // Check if required CLI tool is available
-    console.log("🔍 Checking required CLI tools...");
+    // 检查所需CLI工具
+    console.log("🔍 检查所需CLI工具...");
     if (!checkCliTool("doc-to-text")) {
         return false;
     }
-    console.log("✅ All required CLI tools are available");
+    console.log("✅ 所需CLI工具均可用");
     console.log("");
 
-    // Supported document extensions
+    // 支持的文档扩展名
     var documentExtensions = [
         ".pdf", ".docx", ".doc", ".txt", 
         ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".tiff"
     ];
 
-    // Get list of document files to process
+    // 获取待处理文档文件列表
     var documentFiles = getDocumentFiles(inputPath, documentExtensions);
 
     if (documentFiles.length === 0) {
-        console.error("❌ No supported document files found in:", inputPath);
-        console.log("Supported formats:", documentExtensions.join(", "));
+        console.error("❌ 未找到支持的文档文件:", inputPath);
+        console.log("支持的格式:", documentExtensions.join(", "));
         return false;
     }
 
-    console.log("📁 Found", documentFiles.length, "document file(s) to process:");
+    console.log("📁 共找到", documentFiles.length, "个文档文件:");
     for (var i = 0; i < documentFiles.length; i++) {
         console.log("  " + (i + 1) + ". " + fs.filename(documentFiles[i]));
     }
     console.log("");
 
-    // Process each document file
+    // 处理每个文档文件
     var successCount = 0;
     var failureCount = 0;
 
@@ -109,48 +109,48 @@ function main() {
         var fileName = fs.filename(documentFile);
         var baseName = fs.basename(documentFile);
         
-        console.log("📄 Processing [" + (i + 1) + "/" + documentFiles.length + "]: " + fileName);
+        console.log("📄 正在处理 [" + (i + 1) + "/" + documentFiles.length + "]: " + fileName);
         
-        // Determine output file path
+        // 计算输出文件路径
         var textOutputFile = determineTextOutputPath(documentFile, baseName, outputPath, isBatchProcessing);
         
-        // Check if output file already exists
+        // 检查输出文件是否已存在
         if (!overwrite && fs.exists(textOutputFile)) {
-            console.log("⏭️  Skipping (file exists): " + fs.filename(textOutputFile));
+            console.log("⏭️  跳过（文件已存在）: " + fs.filename(textOutputFile));
             console.log("");
             continue;
         }
         
-        // Extract text from document
+        // 提取文本
         if (extractTextFromDocument(documentFile, textOutputFile, ocrTool, ocrLlmTemplate, contentType, verbose)) {
             successCount++;
-            console.log("✅ Success: " + fs.filename(textOutputFile));
+            console.log("✅ 成功: " + fs.filename(textOutputFile));
         } else {
             failureCount++;
-            console.log("❌ Failed: " + fileName);
+            console.log("❌ 失败: " + fileName);
         }
         console.log("");
     }
 
-    // Summary
-    console.log("🎯 Processing Summary:");
+    // 总结
+    console.log("🎯 处理总结:");
     console.log("===================");
-    console.log("✅ Successful:", successCount);
-    console.log("❌ Failed:", failureCount);
-    console.log("📊 Total processed:", documentFiles.length);
+    console.log("✅ 成功:", successCount);
+    console.log("❌ 失败:", failureCount);
+    console.log("📊 总计处理:", documentFiles.length);
 
     if (successCount > 0) {
         console.log("");
-        console.log("🎉 Text extraction completed successfully!");
+        console.log("🎉 文本提取完成！");
         if (outputPath) {
-            console.log("📂 Output location:", outputPath);
+            console.log("📂 输出位置:", outputPath);
         }
     }
 
     return true;
 }
 
-// ======================== Helper Functions ========================
+// ======================== 辅助函数 ========================
 
 function validateOutputPath(outputPath, isBatchProcessing) {
     // Check if output path exists
@@ -227,7 +227,7 @@ function validateOutputPath(outputPath, isBatchProcessing) {
 }
 
 function checkCliTool(toolName) {
-    var result = cliCommand(toolName, ["-h"], { timeout: 10 });
+    var result = cliCommand(toolName, ["-h"], { timeout: 3600 });
     
     // Check for whitelist errors first (security)
     if (result.error && result.error.indexOf("not in the allowed CLI commands list") !== -1) {
@@ -382,7 +382,7 @@ function extractTextFromDocument(documentFile, textOutputFile, ocrTool, ocrLlmTe
     console.log("🔧 Command: doc-to-text " + extractArgs.join(" "));
     
     // For interactive mode, we need to allow user input
-    var commandOptions = { timeout: 600 };
+    var commandOptions = { timeout: 3600 };
     
     // If OCR tool is interactive or not specified, the command may need user input
     if (!ocrTool || ocrTool === "interactive") {
@@ -390,7 +390,7 @@ function extractTextFromDocument(documentFile, textOutputFile, ocrTool, ocrLlmTe
         console.log("📝 Please select the appropriate OCR tool when prompted");
         // Enable interactive mode and increase timeout
         commandOptions.interactive = true;
-        commandOptions.timeout = 1800;
+        commandOptions.timeout = 3600;
     }
     
     var extractResult = cliCommand("doc-to-text", extractArgs, commandOptions);

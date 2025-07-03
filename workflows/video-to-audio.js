@@ -1,95 +1,95 @@
 //!amo
 
-// Video to Audio Converter using FFmpeg
-// Supports: single file, multiple files, or directory batch processing
-// Audio formats: mp3, wav, ogg, aac, flac with optimized parameters
+// 视频转音频工具（基于FFmpeg）
+// 支持：单文件、多文件或目录批量处理
+// 支持音频格式：mp3, wav, ogg, aac, flac，参数已优化
 
 function main() {
-    console.log("🎬➡️🎵 Video to Audio Converter");
+    console.log("🎬➡️🎵 视频转音频工具");
     console.log("=====================================");
 
-    // Get runtime variables
+    // 获取运行时变量
     var optHelp = getVar("help") === "true"
     var inputPath = getVar("input") || "";
     var outputFormat = getVar("format") || "mp3";
-    var outputPath = getVar("output") || "";  // New: unified output parameter
-    var outputDir = getVar("output_dir") || "";  // Legacy: keep for backward compatibility
+    var outputPath = getVar("output") || "";  // 新：统一输出参数
+    var outputDir = getVar("output_dir") || "";  // 兼容旧参数
     var quality = getVar("quality") || "standard";
     var overwrite = getVar("overwrite") === "true";
 
-    // Show help message
+    // 显示帮助信息
     if (optHelp) {
-        console.log("Convert video files to audio files using FFmpeg");
-        console.log("Supported variables:");
-        console.log("  --var help=true: Show help message");
-        console.log("  --var input=/path/to/video: Input video file or directory");
-        console.log("  --var format=mp3: Output format (mp3, wav, ogg, aac, flac)");
-        console.log("  --var output=/path/to/output: Output file or directory");
-        console.log("  --var output_dir=/path/to/output: Output directory");
-        console.log("  --var quality=standard: Quality level (low, standard, high)");
-        console.log("  --var overwrite=true: Overwrite existing files");
+        console.log("将视频文件转换为音频文件（使用FFmpeg）");
+        console.log("支持的变量:");
+        console.log("  --var help=true: 显示帮助信息");
+        console.log("  --var input=/path/to/video: 输入视频文件或目录");
+        console.log("  --var format=mp3: 输出格式（mp3, wav, ogg, aac, flac）");
+        console.log("  --var output=/path/to/output: 输出文件或目录");
+        console.log("  --var output_dir=/path/to/output: 输出目录");
+        console.log("  --var quality=standard: 音质（low, standard, high）");
+        console.log("  --var overwrite=true: 覆盖已存在文件");
         
         return false;
     }
 
-    console.log("Input:", inputPath || "Not specified");
-    console.log("Format:", outputFormat);
-    console.log("Quality:", quality);
+    console.log("输入:", inputPath || "未指定");
+    console.log("格式:", outputFormat);
+    console.log("音质:", quality);
     
-    // Handle output parameter priority: output > output_dir
+    // 输出参数优先级：output > output_dir
     var finalOutputPath = outputPath || outputDir;
-    console.log("Output:", finalOutputPath || "Same as input");
-    console.log("Overwrite existing:", overwrite ? "Yes" : "No");
+    console.log("输出:", finalOutputPath || "与输入相同");
+    console.log("覆盖已存在:", overwrite ? "是" : "否");
     console.log("");
 
-    // Validate required parameters
+    // 校验必需参数
     if (!inputPath) {
-        console.error("❌ Error: Input path is required");
-        console.log("Usage: --var input=/path/to/video --var format=mp3 [--var output=/path/to/output]");
+        console.error("❌ 错误：必须指定输入路径");
+        console.log("用法: --var input=/path/to/video --var format=mp3 [--var output=/path/to/output]");
         return false;
     }
 
-    // Check if input path exists
+    // 检查输入路径是否存在
     if (!fs.exists(inputPath)) {
-        console.error("❌ Error: Input path does not exist:", inputPath);
+        console.error("❌ 错误：输入路径不存在:", inputPath);
         return false;
     }
 
-    // Determine if this is batch processing
+    // 判断是否为批量处理
     var isBatchProcessing = fs.isDir(inputPath);
-    console.log("📊 Processing mode:", isBatchProcessing ? "Batch (directory)" : "Single file");
+    console.log("📊 处理模式:", isBatchProcessing ? "批量（目录）" : "单文件");
 
-    // Validate output path based on processing mode
+    // 校验输出路径
     if (finalOutputPath) {
         var outputValidation = validateOutputPath(finalOutputPath, isBatchProcessing);
         if (!outputValidation.valid) {
-            console.error("❌ Error:", outputValidation.error);
+            console.error("❌ 错误:", outputValidation.error);
             return false;
         }
         finalOutputPath = outputValidation.path;
-        console.log("✅ Output path validated:", finalOutputPath);
+        console.log("✅ 输出路径校验通过:", finalOutputPath);
     }
     console.log("");
 
-    // Check if ffmpeg is available
-    console.log("🔍 Checking FFmpeg availability...");
-    var ffmpegCheck = cliCommand("ffmpeg", [], { timeout: 5 });
+    // 检查FFmpeg可用性
+    console.log("🔍 检查FFmpeg可用性...");
+    var ffmpegCheck = cliCommand("ffmpeg", [], { timeout: 3600 });
     var ffmpegOutput = ffmpegCheck.stderr || ffmpegCheck.stdout || ffmpegCheck.error || "";
 
     if (ffmpegOutput.indexOf("ffmpeg version") === -1) {
-        console.error("❌ FFmpeg not found or not working properly");
-        console.error("Error: " + ffmpegOutput);
+        console.error("❌ 未找到FFmpeg或不可用");
+        console.error("错误: " + ffmpegOutput);
         return false;
     }
-    console.log("✅ FFmpeg is available");
+    console.log("✅ FFmpeg 可用");
 
-    // Supported video extensions
+    // 支持的视频扩展名
     var videoExtensions = [
         ".mp4", ".avi", ".mov", ".mkv", ".wmv", ".flv", ".webm", ".m4v", 
         ".mpg", ".mpeg", ".3gp", ".asf", ".rm", ".rmvb", ".vob", ".ts", ".mts"
     ];
 
-    // Audio format configurations
+    // 音频格式配置
     var audioConfigs = {
         "mp3": {
             codec: "libmp3lame",
@@ -118,31 +118,31 @@ function main() {
         }
     };
 
-    // Validate output format
+    // 校验输出格式
     if (!audioConfigs[outputFormat]) {
-        console.error("❌ Unsupported audio format:", outputFormat);
-        console.log("Supported formats:", Object.keys(audioConfigs).join(", "));
+        console.error("❌ 不支持的音频格式:", outputFormat);
+        console.log("支持的格式:", Object.keys(audioConfigs).join(", "));
         return false;
     }
 
-    console.log("🎵 Target format:", outputFormat.toUpperCase());
+    console.log("🎵 目标格式:", outputFormat.toUpperCase());
     console.log("");
 
-    // Get list of video files to process
+    // 获取待处理视频文件列表
     var videoFiles = getVideoFiles(inputPath, videoExtensions);
 
     if (videoFiles.length === 0) {
-        console.error("❌ No video files found in:", inputPath);
+        console.error("❌ 未找到视频文件:", inputPath);
         return false;
     }
 
-    console.log("📁 Found", videoFiles.length, "video file(s) to process:");
+    console.log("📁 共找到", videoFiles.length, "个视频文件:");
     for (var i = 0; i < videoFiles.length; i++) {
         console.log("  " + (i + 1) + ". " + fs.filename(videoFiles[i]));
     }
     console.log("");
 
-    // Process each video file
+    // 处理每个视频文件
     var successCount = 0;
     var failureCount = 0;
 
@@ -151,48 +151,48 @@ function main() {
         var fileName = fs.basename(videoFile);
         var baseName = getBaseNameWithoutExt(fileName);
         
-        console.log("🎬 Processing [" + (i + 1) + "/" + videoFiles.length + "]: " + fileName);
+        console.log("🎬 正在处理 [" + (i + 1) + "/" + videoFiles.length + "]: " + fileName);
         
-        // Determine output file path
+        // 计算输出文件路径
         var outputFile = determineOutputPath(videoFile, baseName, audioConfigs[outputFormat].ext, finalOutputPath, isBatchProcessing);
         
-        // Check if output file already exists
+        // 检查输出文件是否已存在
         if (!overwrite && fs.exists(outputFile)) {
-            console.log("⏭️  Skipping (file exists): " + fs.filename(outputFile));
+            console.log("⏭️  跳过（文件已存在）: " + fs.filename(outputFile));
             console.log("");
             continue;
         }
         
-        // Convert video to audio
+        // 转换视频为音频
         if (convertVideoToAudio(videoFile, outputFile, audioConfigs[outputFormat], overwrite)) {
             successCount++;
-            console.log("✅ Success: " + fs.filename(outputFile));
+            console.log("✅ 成功: " + fs.filename(outputFile));
         } else {
             failureCount++;
-            console.log("❌ Failed: " + fileName);
+            console.log("❌ 失败: " + fileName);
         }
         console.log("");
     }
 
-    // Summary
-    console.log("🎯 Conversion Summary:");
+    // 总结
+    console.log("🎯 转换总结:");
     console.log("===================");
-    console.log("✅ Successful:", successCount);
-    console.log("❌ Failed:", failureCount);
-    console.log("📊 Total processed:", videoFiles.length);
+    console.log("✅ 成功:", successCount);
+    console.log("❌ 失败:", failureCount);
+    console.log("📊 总计处理:", videoFiles.length);
 
     if (successCount > 0) {
         console.log("");
-        console.log("🎉 Audio files have been generated successfully!");
+        console.log("🎉 音频文件已成功生成！");
         if (finalOutputPath) {
-            console.log("📂 Output location:", finalOutputPath);
+            console.log("📂 输出位置:", finalOutputPath);
         }
     }
 
     return true;
 }
 
-// ======================== Helper Functions ========================
+// ======================== 辅助函数 ========================
 
 function validateOutputPath(outputPath, isBatchProcessing) {
     // Check if output path exists
@@ -388,7 +388,7 @@ function convertVideoToAudio(inputFile, outputFile, config, overwrite) {
     console.log("🔄 Converting...");
     
     // Execute ffmpeg command
-    var result = cliCommand("ffmpeg", args, { timeout: 300 });
+    var result = cliCommand("ffmpeg", args, { timeout: 3600 });
     
     if (result.error) {
         console.error("❌ Conversion failed:");
