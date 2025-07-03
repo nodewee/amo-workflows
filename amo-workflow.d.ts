@@ -73,6 +73,7 @@ declare namespace Amo {
     cwd?: string;
     env?: Record<string, string>;
     interactive?: boolean;
+    stdin?: string;
   }
 
   interface DownloadOptions {
@@ -141,6 +142,7 @@ declare const fs: {
   
   // Hash functions
   md5(path: string): Amo.HashResult;
+  sha256(path: string): Amo.HashResult;
 };
 
 // HTTP/Network API

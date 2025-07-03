@@ -327,7 +327,7 @@ if (result.error) {
 // Command with options
 var gitResult = cliCommand("git", ["status"], {
     cwd: "/path/to/repo",
-    timeout: 30,
+    timeout: 3600,
     env: {
         "GIT_AUTHOR_NAME": "Amo Workflow"
     }
